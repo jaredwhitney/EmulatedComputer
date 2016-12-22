@@ -1,0 +1,16 @@
+AJUMP CODE_START
+
+#LABEL welcomeString
+	#STRING Hello, and welcome to the game!
+
+#LABEL CODE_START
+MOVE r0 A0000
+MOVE r1 welcomeString
+#LABEL loop
+	MOVE BYTE [r0] [r1]
+	ADD r0 1
+	ADD r1 1
+	NJUMP BYTE [r1] 0 loop
+	
+#LABEL HALT
+	AJUMP HALT

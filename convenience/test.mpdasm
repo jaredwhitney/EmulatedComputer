@@ -1,0 +1,12 @@
+#DEFINE KeyboardPort 5
+#DEFINE GetBufferedKeyPress 0
+#DEFINE ScreenMemory A0000
+#DEFINE SendResult r4
+
+MOVE r0 ScreenMemory
+#LABEL loop
+	SEND KeyboardPort GetBufferedKeyPress
+	ZJUMP SendResult loop
+	MOVE BYTE [r0] SendResult
+	ADD r0 1
+	AJUMP loop

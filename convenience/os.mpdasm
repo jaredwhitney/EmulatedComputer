@@ -1,0 +1,639 @@
+#DEFINE screenPort 7
+#DEFINE screen.getMode 0
+#DEFINE screen.getXres 1
+#DEFINE screen.getYres 2
+#DEFINE screen.getMemLoc 4
+#DEFINE screen.setMode 6
+#DEFINE screen.MODE_TEXT 0
+#DEFINE screen.MODE_VGA 1
+
+#DEFINE keyboardPort 5
+#DEFINE keyboard.getBufferedKeypress 0
+
+#LABEL bootstart
+		move sp 10000
+	ajump main
+
+#LABEL main
+
+		call getScreenInfo
+		
+		call printScreenInfo
+		
+		call advanceLine
+		move r2 bootKeyWait
+		call printline
+		call keyWait
+		
+		call drawBG
+		
+		move r1 [SCREEN_MEMPOS]
+		move r2 Font.order
+		call printline
+		call advanceLine
+		move r2 graphicsMode
+		call printline
+		
+		call advanceLine
+		call advanceLine
+		
+		move r3 commandBuffer
+		
+		#LABEL .consoleLoop
+		move r2 consolePrompt
+		call print
+		
+		#LABEL .inputLoop
+			send keyboardPort keyboard.getBufferedKeypress
+			zjump r4 .inputLoop
+			ejump r4 0A .proccessCommand
+			ejump r4 08 .handleBackspace
+			ejump r3 commandBufferLimit .inputLoop
+			move byte [r3] r4
+			add r3 1
+			move r2 r4
+			call gPrintChar
+			ajump .inputLoop
+		#LABEL .handleBackspace
+			ejump r3 commandBuffer .handleBackspaceNoMore
+			sub r1 FONTWIDTHx4
+			sub r1 8
+			push r3
+			##
+			move r2 FE
+			move r4 [SCREEN_WIDTH]
+			shift left r4 2
+			move r3 r1
+			move r1 000000
+			call renderChar
+			move r1 r3
+			##
+			pop r3
+			sub r3 1
+			move byte [r3] 0
+		#LABEL .handleBackspaceNoMore
+		ajump .inputLoop
+		
+		#LABEL .proccessCommand
+		call advanceLine
+			## do things here!
+			move byte [r3] 0
+			move r2 consoleClearCommand
+			move r3 commandBuffer
+			call seq
+			zjump r4 .notClear
+			move r1 [SCREEN_MEMPOS]
+			call drawBG
+			ajump .proccessCommandDone
+		#LABEL .notClear
+		#LABEL .proccessCommandDone
+		ajump .consoleLoop
+		
+	ajump halt
+
+#LABEL drawBG
+	push r1
+	push r2
+	push r3
+	push r4
+		move r4 screen.MODE_VGA
+		call displayModeSet
+		move r1 [SCREEN_MEMPOS]
+		move r3 [SCREEN_WIDTH]
+		mul r3 [SCREEN_HEIGHT]
+		mul r3 4
+		add r3 r1
+		#LABEL .fillScreen
+			move r2 r1
+			sub r2 [SCREEN_MEMPOS]
+			div r2 [SCREEN_WIDTH]
+			shift right r2 2
+			mul r2 60
+			div r2 [SCREEN_HEIGHT]
+			mul r2 010101
+			move [r1] r2
+			add r1 4
+			ljump r1 r3 .fillScreen
+	pop r4
+	pop r3
+	pop r2
+	pop r1
+	ret
+
+#LABEL getScreenInfo
+	push r4
+	
+		move r4 screen.MODE_VGA
+		call displayModeSet
+
+		send screenPort screen.getMemLoc
+		move [SCREEN_MEMPOS] r4
+		
+		send screenPort screen.getXres
+		move [SCREEN_WIDTH] r4
+		
+		send screenPort screen.getYres
+		move [SCREEN_HEIGHT] r4
+		
+		move r4 screen.MODE_TEXT
+		call displayModeSet
+		
+		send screenPort screen.getXres
+		move [SCREEN_TEXTWIDTH] r4
+		
+		send screenPort screen.getYres
+		move [SCREEN_TEXTHEIGHT] r4
+		
+	pop r4
+	ret
+
+#LABEL printScreenInfo
+	push r2
+		
+		move r4 screen.MODE_TEXT
+		call displayModeSet
+		
+		move r1 [SCREEN_MEMPOS]
+		move r2 startString
+		call printline
+		
+		move r2 memposString
+		call printline
+		
+		move r2 resSpacerString
+		call print
+		move r2 [SCREEN_MEMPOS]
+		call printNumber
+		call advanceLine
+		
+		move r2 resString1
+		call printline
+		
+		move r2 resSpacerString
+		call print
+		move r2 [SCREEN_TEXTWIDTH]
+		call printNumber
+		move r2 resBreakString
+		call print
+		move r2 [SCREEN_TEXTHEIGHT]
+		call printNumber
+		move r2 resString2
+		call printline
+		
+		move r2 resSpacerString
+		call print
+		move r2 [SCREEN_WIDTH]
+		call printNumber
+		move r2 resBreakString
+		call print
+		move r2 [SCREEN_HEIGHT]
+		call printNumber
+		move r2 resString3
+		call printline
+	
+	pop r2
+	ret
+
+#LABEL halt
+	ajump halt
+
+#LABEL SCREEN_MEMPOS
+	data DWORD 0
+#LABEL SCREEN_TEXTWIDTH
+	data DWORD 0
+#LABEL SCREEN_TEXTHEIGHT
+	data DWORD 0
+#LABEL SCREEN_WIDTH
+	data DWORD 0
+#LABEL SCREEN_HEIGHT
+	data DWORD 0
+
+#LABEL startString
+	#STRING Screen Information:
+#LABEL memposString
+	#STRING   Screen Mempos: 
+#LABEL resString1
+	#STRING   Resolutions:
+#LABEL resSpacerString
+	#STRING     
+#LABEL resBreakString
+	#STRING  x 
+#LABEL resString2
+	#STRING  (text)
+#LABEL resString3
+	#STRING  (graphics)
+
+#LABEL bootKeyWait
+	#STRING Press any key to continue booting...
+
+#LABEL graphicsMode
+	#STRING Successfully swapped to graphics mode!
+
+#LABEL consolePrompt
+	#STRING Console> 
+#LABEL consoleClearCommand
+	#STRING clear
+#LABEL commandBuffer
+	data DWORD 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+	#LABEL commandBufferLimit
+		data WORD 0
+
+#LABEL seq
+	push r0
+	push r1
+	push r2
+	push r3
+		move r4 FF
+		#LABEL .loop
+		move byte r0 [r2]
+		move byte r1 [r3]
+		zjump r0 .ret
+		zjump r1 .ret
+		add r2 1
+		add r3 1
+		and r0 FF
+		and r1 FF
+		ejump r0 r1 .loop
+	move r4 0
+	#LABEL .ret
+	pop r3
+	pop r2
+	pop r1
+	pop r0
+	ret
+
+#LABEL print
+	push r4
+	push r2
+		send screenPort screen.getMode
+		ejump r4 screen.MODE_TEXT .textMode
+		ajump .graphicsMode
+
+	#LABEL print.textMode
+			zjump BYTE [r2] .ret
+			move BYTE [r1] [r2]
+			add r1 1
+			add r2 1
+			njump BYTE [r2] 0 print.textMode
+			#LABEL .ret
+		pop r2
+		pop r4
+		ret
+
+	#LABEL print.graphicsMode
+		push r3
+			move r0 r2
+			move r3 r1
+			move r4 [SCREEN_WIDTH]
+			shift left r4 2
+			move r1 00FF00
+			#LABEL .loop
+			move byte r2 [r0]
+			call renderChar
+			add r0 1
+			add r3 FONTWIDTHx4
+			add r3 8
+			call advanceIfUnaligned
+			njump byte [r0] 0 .loop
+			move r1 r3
+		pop r3
+		pop r2
+		pop r4
+		ret
+
+
+#LABEL gPrintChar
+	push r4
+	push r3
+		move r3 r1
+		move r4 [SCREEN_WIDTH]
+		shift left r4 2
+		move r1 00FF00
+		call renderChar
+		call advanceIfUnaligned
+		move r1 r3
+		add r1 FONTWIDTHx4
+		add r1 8
+	pop r3
+	pop r4
+	ret
+	
+	
+#LABEL printline
+		call print
+		call advanceLine
+	ret
+
+#LABEL advanceLine
+	push r4
+		send screenPort screen.getMode
+		ejump r4 screen.MODE_TEXT .textMode
+		ajump .graphicsMode
+		
+	#LABEL advanceLine.textMode
+			sub r1 [SCREEN_MEMPOS]
+			div r1 [SCREEN_TEXTWIDTH]
+			add r1 1
+			mul r1 [SCREEN_TEXTWIDTH]
+			add r1 [SCREEN_MEMPOS]
+		pop r4
+		ret
+	
+	#LABEL advanceLine.graphicsMode
+			sub r1 [SCREEN_MEMPOS]
+			div r1 [SCREEN_WIDTH]
+			shift right r1 2
+			shift left r1 2
+			push r2
+			move r2 FONTHEIGHT
+			add r2 4
+			shift left r2 2
+			add r1 r2
+			pop r2
+			mul r1 [SCREEN_WIDTH]
+			add r1 [SCREEN_MEMPOS]
+		pop r4
+		ret
+
+#LABEL advanceIfUnaligned
+	push r1
+	push r2
+	push r0
+		move r0 r3
+		add r0 FONTWIDTHx4
+		sub r0 [SCREEN_MEMPOS]
+		div r0 [SCREEN_WIDTH]
+		shift right r0 2
+		move r1 r0
+		move r2 FONTHEIGHT
+		add r2 4
+		div r0 r2
+		mul r0 r2
+		ejump r0 r1 .nofix
+		shift left r0 2
+		mul r0 [SCREEN_WIDTH]
+		add r0 [SCREEN_MEMPOS]
+		move r1 r3
+		sub r1 FONTWIDTHx4
+		call advanceLine
+		move r3 r1
+	#LABEL .nofix
+	pop r0
+	pop r2
+	pop r1
+	ret
+
+#LABEL printNumber
+	push r3
+	push r4
+	push r0
+		
+		move [printNumberBufferPos] r1
+		move r0 %28
+		move r3 0
+		
+		#LABEL .Start
+		njump r2 0 .Cont
+		move BYTE [r1] 30
+		add r1 1
+		pop r0
+		pop r4
+		pop r3
+		ret
+		#LABEL .Cont
+		move r4 r2
+		shift right r4 r0
+		and r4 F
+		zjump r4 .CheckZ
+		move r3 1
+		#LABEL .DontCare
+		push r2
+		move r1 r4
+		gjump r4 9 .G10
+		add r1 30
+		ajump .GoPrint
+		#LABEL .G10
+		add r1 37
+		#LABEL .GoPrint
+		call .PrintChar
+		pop r2
+		#LABEL .GoCont
+		lejump r0 0 .End
+		sub r0 4
+		ajump .Start
+		#LABEL .End
+		move r1 [printNumberBufferPos]
+	pop r0	
+	pop r4
+	pop r3
+	ret
+
+	#LABEL .CheckZ
+			zjump r3 .GoCont
+		ajump .DontCare
+
+	#LABEL .PrintChar
+		push r0
+			move r0 [printNumberBufferPos]
+			move BYTE [r0] r1
+			add [printNumberBufferPos] 1
+		pop r0
+		ret
+	
+#LABEL printNumberBufferPos
+	data 0
+
+#LABEL displayModeSet
+	push r3
+		move r3 r4
+		send screenPort screen.getMode
+		ejump r4 r3 .ret
+		move r4 r3
+		send screenPort screen.setMode
+	#LABEL .ret
+	pop r3
+	ret
+
+#LABEL keyWait
+	push r4
+	#LABEL .loop
+		send keyboardPort keyboard.getBufferedKeypress
+	zjump r4 .loop
+	pop r4
+	ret
+
+#DEFINE FONTHEIGHT 7
+#DEFINE FONTWIDTH %5
+#DEFINE FONTWIDTHx4 %20
+# char in r2 / color in r1 / image in r3 / imagewidth in r4
+#LABEL renderChar
+	ejump r2 D .ret
+	push r0
+	push r1
+	push r2
+	push r3
+	push r4
+		move [renderChar.imwidth] r4
+		push r4
+		call TextHandler.getCharBitmap
+		move r2 r4
+		pop r4
+		move [renderChar.bitmapPos] r2
+		move r4 FONTHEIGHT
+		#LABEL .mainloop
+		push r3
+		push r2
+		move byte r2 [r2]
+		and r2 FF
+		add r3 FONTWIDTHx4
+		#LABEL .widthLoop
+		move r0 r2
+		and r0 1
+		zjump r0 .noDraw
+		move [r3] r1
+		#LABEL .noDraw
+		sub r3 4
+		shift right r2 1
+		move r0 r2
+		and r0 1F
+			njump r0 0 .widthLoop
+		pop r2
+		pop r3
+		add r2 1
+		add r3 [renderChar.imwidth]
+		sub r4 1
+		gjump r4 0 .mainloop
+	pop r4
+	pop r3
+	pop r2
+	pop r1
+	pop r0
+	#LABEL .ret
+	ret
+
+	#LABEL renderChar.imwidth
+		DATA 0
+	#LABEL renderChar.bitmapPos
+		DATA 0
+
+#LABEL TextHandler.getCharBitmap
+	push r1
+	push r3
+		move r1 Font.bitmaps
+		move r4 Font.order
+		#LABEL .getposloop
+		move byte r3 [r4]
+		ejump byte r2 r3 dword .posret
+		add r1 7
+		add r4 1
+		move byte r3 [r4]
+		ejump byte r3 FF dword .posret
+		ajump .getposloop
+		#LABEL .posret
+	move r4 r1
+	pop r3
+	pop r1
+	ret
+
+#LABEL Font.bitmaps
+	DATA byte 04 0A 11 1F 11 11 11
+	DATA byte 00 00 00 0C 12 12 0E
+	DATA byte 1E 11 11 1E 11 11 1E
+	DATA byte 00 10 10 10 1C 12 0C
+	DATA byte 06 09 10 10 10 09 06
+	DATA byte 00 00 00 00 0C 10 0C
+	DATA byte 1C 12 11 11 11 12 1C
+	DATA byte 00 01 01 01 07 09 06
+	DATA byte 1F 10 10 1C 10 10 1F
+	DATA byte 00 00 1E 12 1E 10 1E
+	DATA byte 1f 10 10 1f 10 10 10 
+	DATA byte 00 03 04 1f 04 04 04 
+	DATA byte 0e 11 10 17 11 11 0f 
+	DATA byte 00 00 0e 0a 0e 02 0c 
+	DATA byte 11 11 11 1f 11 11 11 
+	DATA byte 00 10 10 10 1e 12 12 
+	DATA byte 1f 04 04 04 04 04 1f 
+	DATA byte 00 00 04 00 04 04 04 
+	DATA byte 01 01 01 01 01 09 06 
+	DATA byte 00 02 00 02 02 12 0c 
+	DATA byte 11 11 12 1c 12 11 11 
+	DATA byte 00 10 12 14 18 14 12 
+	DATA byte 10 10 10 10 10 10 1f 
+	DATA byte 00 04 04 04 04 04 04 
+	DATA byte 11 11 1b 15 11 11 11 
+	DATA byte 00 00 00 1a 15 11 11 
+	DATA byte 11 19 19 15 15 13 11 
+	DATA byte 00 00 00 10 1e 12 12 
+	DATA byte 04 0a 11 11 11 0a 04 
+	DATA byte 00 00 00 0c 12 12 0c 
+	DATA byte 1e 11 11 1e 10 10 10 
+	DATA byte 00 00 1e 12 1e 10 10 
+	DATA byte 0e 11 11 11 15 12 0d 
+	DATA byte 00 00 1e 12 1e 02 02 
+	DATA byte 1e 11 11 1e 11 11 11 
+	DATA byte 00 00 00 0e 08 08 08 
+	DATA byte 07 08 08 04 02 02 1c 
+	DATA byte 00 00 1c 10 1c 04 1c 
+	DATA byte 1f 04 04 04 04 04 04 
+	DATA byte 00 04 04 1f 04 04 04 
+	DATA byte 11 11 11 11 11 11 0e 
+	DATA byte 00 00 00 00 12 12 0e 
+	DATA byte 11 11 11 0a 0a 0a 04 
+	DATA byte 00 00 00 00 11 0a 04 
+	DATA byte 11 11 11 15 15 15 0a 
+	DATA byte 00 00 00 00 11 15 0a 
+	DATA byte 11 11 0a 04 0a 11 11 
+	DATA byte 00 00 11 0a 04 0a 11 
+	DATA byte 11 11 0a 0e 04 04 04 
+	DATA byte 00 00 11 0a 04 08 10 
+	DATA byte 1f 01 02 04 08 10 1f 
+	DATA byte 00 00 00 1e 04 08 1e 
+	DATA byte 00 00 00 00 00 00 00 
+	DATA byte 00 00 00 00 00 00 04 
+	DATA byte 00 00 00 00 04 04 08 
+	DATA byte 04 0c 14 04 04 04 1f 
+	DATA byte 0e 11 01 02 04 08 1f 
+	DATA byte 0e 11 01 0e 01 11 0e 
+	DATA byte 11 11 11 1f 01 01 01 
+	DATA byte 1f 10 10 1e 01 01 1e 
+	DATA byte 0e 11 10 1e 11 11 0e 
+	DATA byte 1f 01 01 01 01 01 01 
+	DATA byte 0e 11 11 0e 11 11 0e 
+	DATA byte 0e 11 11 0f 01 11 0e 
+	DATA byte 0e 11 11 15 11 11 0e 
+	DATA byte 0a 0a 00 00 00 00 00 
+	DATA byte 04 04 00 00 00 00 00 
+	DATA byte 00 04 00 00 00 04 00 
+	DATA byte 07 04 04 04 04 04 07 
+	DATA byte 1c 04 04 04 04 04 1c 
+	DATA byte 00 00 00 1f 00 00 00 
+	DATA byte 00 00 1e 00 1e 00 00 
+	DATA byte 09 15 0a 04 0a 15 12 
+	DATA byte 04 04 04 04 04 00 04 
+	DATA byte 0c 12 06 08 08 00 08 
+	DATA byte 04 08 10 10 10 08 04 
+	DATA byte 04 02 01 01 01 02 04 
+	DATA byte 04 08 10 08 10 10 08 
+	DATA byte 04 02 01 02 01 02 04 
+	DATA byte 01 02 04 08 04 02 01 
+	DATA byte 10 08 04 02 04 08 10 
+	DATA byte 00 00 00 00 00 00 00 
+	DATA byte 00 00 02 00 02 04 08 
+	DATA byte 00 00 00 00 00 00 1f 
+	DATA byte 00 01 02 04 08 10 00 
+	DATA byte 00 10 08 04 02 01 00 
+	DATA byte 00 04 15 0e 15 04 00 
+	DATA byte 00 0e 11 15 1b 17 0e 
+	DATA byte 0a 0a 1f 0a 1f 0a 0a 
+	DATA byte 04 0f 14 0e 05 1e 04 
+	DATA byte 04 0a 11 00 00 00 00 
+	DATA byte 0e 11 12 0c 0d 12 0d 
+	DATA byte 00 04 04 1f 04 04 00 
+	DATA byte 04 04 04 04 04 04 04 
+	DATA byte 08 04 00 00 00 00 00 
+	DATA byte 00 00 08 15 02 00 00 
+	DATA byte 00 00 00 00 00 00 00 
+	DATA byte 1f 1f 1f 1f 1f 1f 1f
+	DATA byte 15 0a 15 0a 15 0a 15
+#LABEL Font.order
+	DATA byte 'A' 'a' 'B' 'b' 'C' 'c' 'D' 'd' 'E' 'e' 'F' 'f' 'G' 'g' 'H' 'h' 'I' 'i' 'J' 'j' 'K' 'k' 'L' 'l' 'M' 'm' 'N' 'n' 'O' 'o' 'P' 'p' 'Q' 'q' 'R' 'r' 'S' 's' 'T' 't' 'U' 'u' 'V' 'v' 'W' 'w' 'X' 'x' 'Y' 'y' 'Z' 'z' 20 '.' ',' '1' '2' '3' '4' '5' '6' '7' '8' '9' '0' '"' 27 ':' '[' ']' '-' '=' '%' '!' '?' '(' ')' '{' '}' '<' '>' 09 ';' '_' '/' '\' '*' '@' '#' '$' '^' '&' '+' '|' '`' '~' 00 FE FF

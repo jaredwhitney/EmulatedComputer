@@ -1,0 +1,36 @@
+#DEFINE ScreenMemory A0000
+#LABEL BOOTSTART
+MOVE sp 9000
+
+MOVE r3 ScreenMemory
+MOVE r2 %28
+
+ZJUMP r0 cont
+MOVE BYTE [r3] '0'
+AJUMP HALT
+
+#LABEL cont
+MOVE r1 r0
+SHIFT RIGHT r1 r2
+AND r1 F
+
+EJUMP WORD r1 0 checkZ
+MOVE r4 1
+#LABEL dontCare
+PUSH r0
+MOVE r0 r1
+GJUMP r1 9 g10
+ADD r0 30
+AJUMP goPrint
+#LABEL g10
+ADD r0 37
+#LABEL goPrint
+MOVE BYTE [r3] r0
+ADD r3 1
+POP r0
+#LABEL goCont
+LEJUMP r2 0 end
+SUB r2 4
+AJUMP start
+#LABEL end
+

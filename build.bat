@@ -1,0 +1,1 @@
+javac *.java -classpath .;jar/lwjgl.jar;jar/lwjgl_util.jar;jar/jinput.jar

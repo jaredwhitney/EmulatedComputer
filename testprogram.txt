@@ -1,0 +1,26 @@
+		GMEM.instance.data[10] = 0x00;
+		GMEM.instance.data[11] = (byte)0x91;
+		GMEM.instance.data[12] = 0x31;
+		GMEM.instance.data[13] = 0x00;
+		GMEM.instance.data[14] = 0x0a;
+		GMEM.instance.data[15] = 0x00;
+		GMEM.instance.data[16] = 0x00;
+		GMEM.instance.data[17] = 0x30;
+		GMEM.instance.data[18] = (byte)255;
+		
+		GMEM.instance.data[19] = 0x02;
+		GMEM.instance.data[20] = (byte)0x91;
+		GMEM.instance.data[21] = 0x31;
+		GMEM.instance.data[22] = 0x00;
+		GMEM.instance.data[23] = 0x0a;
+		GMEM.instance.data[24] = 0x00;
+		GMEM.instance.data[25] = 0x00;
+		GMEM.instance.data[26] = 0x30;
+		GMEM.instance.data[27] = 0x01;
+		
+		GMEM.instance.data[28] = 0x04;
+		GMEM.instance.data[29] = 0x30;
+		GMEM.instance.data[30] = 0x00;
+		GMEM.instance.data[31] = 0x00;
+		GMEM.instance.data[32] = 0x00;
+		GMEM.instance.data[33] =   19;

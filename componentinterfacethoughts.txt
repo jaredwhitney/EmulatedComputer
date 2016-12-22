@@ -1,0 +1,38 @@
+public class ComponentInterface
+{
+	
+}
+// word COMPANY_ID
+// word PRODUCT_ID
+// word GROUPING
+// word SUB_TYPE
+// byte SPEC_ID
+// word SPEC_VER
+// byte ACCESS_TYPE
+// int STATUS
+// int REGISTER_0
+// int REGISTER_1
+// int REGISTER_2
+// int REGISTER_3
+class ComponentInterfaceInformationStruct
+{
+	short companyID;
+	short productID;
+	short grouping;
+	short subType;
+	byte specID;
+	short specVer;
+	byte accessType;
+	int status;
+	int r0, r1, r2, r3;
+	enum Grouping
+	{
+		DISPLAY_DEVICE, INPUT_DEVICE, STORAGE_DEVICE
+	}
+	enum SubType
+	{
+		DEFAULT,
+		POINT_DISPLAY, POINT_DISPLAY_3D, LINE_DISPLAY, LINE_DISPLAY_3D, PIXEL_DISPLAY, PIXEL_DISPLAY_3D, TEXT_DISPLAY,
+		POINTER_INPUT, POINTER_INPUT_3D, BUTTON_INPUT_TEXT, BUTTON_INPUT_OTHER, GYRO_INPUT, ;
+	}
+}
